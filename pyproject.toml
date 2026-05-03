@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "clashduel-bot"
 version = "0.1.0"
@@ -20,4 +24,9 @@ dev = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+# Только пакет app; каталог deploy/ — артефакты systemd, не Python-пакет.
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
 
