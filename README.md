@@ -63,15 +63,21 @@ cp .env.example .env
 nano .env   # TOKEN, ADMIN_IDS, при необходимости MODERATION_CHAT_ID
 ```
 
-Юнит systemd (автоперезапуск при падении):
+Юнит systemd (автоперезапуск при падении). **Сначала** должен появиться файл в `/etc/systemd/system/`:
 
 ```bash
-sudo cp deploy/tgbot-ferzerkki.service /etc/systemd/system/tgbot-ferzerkki.service
-# Открой файл и выставь User=/WorkingDirectory= под свою установку
-sudo systemctl daemon-reload
+cd ~/bots/tgbot-ferzerkki   # твой каталог с клоном
+sudo bash deploy/install-systemd.sh          # пути подставятся из $(pwd)
+# если запускаешь скрипт не из каталога проекта:
+# sudo bash deploy/install-systemd.sh /root/bots/tgbot-ferzerkki
+
 sudo systemctl enable --now tgbot-ferzerkki
 journalctl -u tgbot-ferzerkki -f
 ```
+
+Пользователь процесса: по умолчанию тот, кто вызвал `sudo` (переменная `SUDO_USER`), иначе `root`. Явно: `RUN_AS=ubuntu sudo bash deploy/install-systemd.sh`.
+
+Ручной вариант: `sudo cp deploy/tgbot-ferzerkki.service /etc/systemd/system/` и правка `User` / `WorkingDirectory` / `ExecStart` в редакторе, затем `sudo systemctl daemon-reload`.
 
 Опционально системный пользователь без шелла: см. `deploy/create-tgbot-user.sh`, затем `chown -R tgbot:tgbot /opt/TGBOTFerzerkki`.
 

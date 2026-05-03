@@ -1,12 +1,7 @@
-# Установка на VPS (Debian/Ubuntu):
-#   sudo mkdir -p /opt/TGBOTFerzerkki && sudo chown $USER:$USER /opt/TGBOTFerzerkki
-#   git clone https://github.com/SiteCraftorCPP/TGBOTFerzerkki.git /opt/TGBOTFerzerkki
-#   cd /opt/TGBOTFerzerkki && python3.11 -m venv .venv && . .venv/bin/activate && pip install -e .
-#   cp .env.example .env && nano .env
-#   sudo cp deploy/tgbot-ferzerkki.service /etc/systemd/system/tgbot-ferzerkki.service
-#   sudo systemctl daemon-reload && sudo systemctl enable --now tgbot-ferzerkki
+# Ручная установка (проще скрипт): из корня репозитория
+#   sudo bash deploy/install-systemd.sh
 #
-# Проверь пути User=/WorkingDirectory= и имя venv при необходимости.
+# Ручной вариант: скопируй этот файл в /etc/systemd/system/ и поправь пути и User/Group.
 # Логи: journalctl -u tgbot-ferzerkki -f
 
 [Unit]
