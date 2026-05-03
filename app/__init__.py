@@ -1,0 +1,2 @@
+"""ClashDuel bot package."""
+

@@ -1,0 +1,28 @@
+# Установка на VPS (Debian/Ubuntu):
+#   sudo mkdir -p /opt/TGBOTFerzerkki && sudo chown $USER:$USER /opt/TGBOTFerzerkki
+#   git clone https://github.com/SiteCraftorCPP/TGBOTFerzerkki.git /opt/TGBOTFerzerkki
+#   cd /opt/TGBOTFerzerkki && python3.11 -m venv .venv && . .venv/bin/activate && pip install -e .
+#   cp .env.example .env && nano .env
+#   sudo cp deploy/tgbot-ferzerkki.service /etc/systemd/system/tgbot-ferzerkki.service
+#   sudo systemctl daemon-reload && sudo systemctl enable --now tgbot-ferzerkki
+#
+# Проверь пути User=/WorkingDirectory= и имя venv при необходимости.
+# Логи: journalctl -u tgbot-ferzerkki -f
+
+[Unit]
+Description=TGBOTFerzerkki Telegram bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tgbot
+Group=tgbot
+WorkingDirectory=/opt/TGBOTFerzerkki
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/TGBOTFerzerkki/.venv/bin/python -m app.main
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
