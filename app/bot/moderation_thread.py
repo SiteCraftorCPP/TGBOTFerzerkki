@@ -7,6 +7,7 @@ from aiogram.exceptions import TelegramBadRequest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.formatting import display_db_user
+from app.bot.telegram_log import telegram_error_details
 from app.core.config import get_settings
 from app.db.models import User
 from app.db.repositories import invalidate_user_support_forum_if_mod_chat_mismatch, set_user_support_forum_thread
@@ -21,6 +22,7 @@ async def ensure_user_moderation_thread(bot: Bot, session: AsyncSession, user: U
     """
     mod_chat = get_settings().moderation_chat_id_int
     if mod_chat is None:
+        logger.info("ensure_user_moderation_thread: MODERATION_CHAT_ID пуст — подтема не создаётся")
         return None
 
     await session.refresh(user)
@@ -31,6 +33,12 @@ async def ensure_user_moderation_thread(bot: Bot, session: AsyncSession, user: U
 
     label = display_db_user(user)
     topic_title = f"👤 {label}"[:128]
+    logger.info(
+        "ensure_user_moderation_thread: user_id=%s create_forum_topic chat=%s title=%r",
+        user.id,
+        mod_chat,
+        topic_title,
+    )
     try:
         topic = await bot.create_forum_topic(chat_id=mod_chat, name=topic_title)
         thread_id = topic.message_thread_id
@@ -41,9 +49,18 @@ async def ensure_user_moderation_thread(bot: Bot, session: AsyncSession, user: U
     except TelegramBadRequest as e:
         err = (getattr(e, "message", None) or str(e)).lower()
         if "not a forum" in err or "chat_not_forum" in err:
-            logger.info("Чат %s без тем — подтема не создаётся", mod_chat)
+            logger.info(
+                "ensure_user_moderation_thread: чат %s не форум (%s)",
+                mod_chat,
+                telegram_error_details(e),
+            )
             return None
-        logger.error("Не удалось создать подтему для user_id=%s: %s", user.id, e)
+        logger.error(
+            "ensure_user_moderation_thread: create_forum_topic FAILED user_id=%s chat=%s: %s",
+            user.id,
+            mod_chat,
+            telegram_error_details(e),
+        )
         return None
     except Exception:
         logger.exception("create_forum_topic user_id=%s", user.id)

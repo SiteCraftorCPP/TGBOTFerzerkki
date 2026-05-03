@@ -49,6 +49,17 @@ pip install -e .
 sudo systemctl restart tgbot-ferzerkki   # если сервис уже настроен
 ```
 
+**Сброс только тикетов поддержки (SQLite), без пакета `sqlite3`:**
+
+```bash
+sudo systemctl stop tgbot-ferzerkki
+cd ~/bots/tgbot-ferzerkki
+./.venv/bin/python deploy/reset_support_tickets.py
+sudo systemctl start tgbot-ferzerkki
+```
+
+Либо: `sudo apt install -y sqlite3` и ручной `sqlite3 …`.
+
 Альтернатива с `/opt` (как в юните по умолчанию):
 
 ```bash

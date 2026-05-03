@@ -105,7 +105,7 @@ class Transaction(Base):
 class SupportTicket(Base):
     __tablename__ = "support_tickets"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     forum_thread_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     message: Mapped[str] = mapped_column(Text)

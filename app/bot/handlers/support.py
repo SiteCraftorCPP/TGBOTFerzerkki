@@ -18,6 +18,7 @@ from app.bot.keyboards.common import (
 from app.bot.keyboards.topic_moderation import topic_ticket_actions_keyboard
 from app.bot.moderation_thread import ensure_user_moderation_thread
 from app.bot.states import BalanceStates, SupportStates
+from app.bot.telegram_log import telegram_error_details
 from app.bot.texts_balance import balance_intro_html
 from app.core.config import get_settings
 from app.db.repositories import (
@@ -186,6 +187,13 @@ async def support_message(message: Message, state: FSMContext, session: AsyncSes
 
     mod_chat = get_settings().moderation_chat_id_int
     label = display_db_user(user)
+    logger.info(
+        "support: новый тикет id=%s user_id=%s telegram_id=%s MODERATION_CHAT_ID=%s",
+        ticket.id,
+        user.id,
+        user.telegram_id,
+        mod_chat,
+    )
     ticket_html = (
         f"🎫 Обращение <b>#{ticket.id}</b>\n"
         f"👤 {html.escape(label)}\n\n"
@@ -202,6 +210,13 @@ async def support_message(message: Message, state: FSMContext, session: AsyncSes
         await invalidate_user_support_forum_if_mod_chat_mismatch(session, user, mod_chat)
         await session.refresh(user)
         reused_tid = user.support_forum_thread_id
+        logger.info(
+            "support: тикет=%s mod_chat=%s reused_thread_id=%s moderation_chat_anchor=%s",
+            ticket.id,
+            mod_chat,
+            reused_tid,
+            user.support_moderation_chat_id,
+        )
         if reused_tid is not None:
             try:
                 await update_ticket_forum_thread(session, ticket.id, reused_tid)
@@ -213,17 +228,37 @@ async def support_message(message: Message, state: FSMContext, session: AsyncSes
                     parse_mode="HTML",
                 )
                 posted_to_mod_chat = True
-                logger.info("Тикет %s в существующую подтему пользователя thread_id=%s", ticket.id, reused_tid)
-            except TelegramBadRequest:
-                logger.warning("Подтема %s больше не действует — создаём новую для user=%s", reused_tid, user.id)
+                logger.info(
+                    "support: тикет %s отправлен в существующую подтему thread_id=%s chat=%s",
+                    ticket.id,
+                    reused_tid,
+                    mod_chat,
+                )
+            except TelegramBadRequest as e:
+                logger.warning(
+                    "support: повторное использование подтемы не удалось — %s; сбрасываем thread для user=%s",
+                    telegram_error_details(e),
+                    user.id,
+                )
                 await set_user_support_forum_thread(session, user.id, None)
                 await session.refresh(user)
 
         if not posted_to_mod_chat:
             topic_title = f"👤 {label}"[:128]
+            logger.info(
+                "support: создаём forum topic в chat=%s name=%r тикет=%s",
+                mod_chat,
+                topic_title,
+                ticket.id,
+            )
             try:
                 topic = await bot.create_forum_topic(chat_id=mod_chat, name=topic_title)
                 thread_id = topic.message_thread_id
+                logger.info(
+                    "support: create_forum_topic OK тикет=%s thread_id=%s",
+                    ticket.id,
+                    thread_id,
+                )
                 await update_ticket_forum_thread(session, ticket.id, thread_id)
                 await set_user_support_forum_thread(session, user.id, thread_id, moderation_chat_id=mod_chat)
                 await bot.send_message(
@@ -234,32 +269,43 @@ async def support_message(message: Message, state: FSMContext, session: AsyncSes
                     parse_mode="HTML",
                 )
                 posted_to_mod_chat = True
-                logger.info("Тикет %s: новая подтема thread_id=%s", ticket.id, thread_id)
+                logger.info("support: тикет %s отправлен в новую подтему thread_id=%s", ticket.id, thread_id)
             except TelegramBadRequest as e:
                 err = (getattr(e, "message", None) or str(e)).lower()
+                detail = telegram_error_details(e)
                 if "not a forum" in err or "chat_not_forum" in err:
-                    logger.info("Чат %s не форум — тикет %s в общий поток", mod_chat, ticket.id)
+                    logger.info(
+                        "support: чат %s не форум (%s) — шлём тикет %s без thread_id (общий поток)",
+                        mod_chat,
+                        detail,
+                        ticket.id,
+                    )
                     try:
                         await update_ticket_forum_thread(session, ticket.id, None)
                         await bot.send_message(mod_chat, ticket_html, reply_markup=mod_kb, parse_mode="HTML")
                         posted_to_mod_chat = True
                     except Exception:
-                        logger.exception("Отправка тикета %s в чат %s", ticket.id, mod_chat)
+                        logger.exception("support: отправка тикета %s в чат %s без подтемы", ticket.id, mod_chat)
                 else:
                     forum_topic_expected = True
                     await update_ticket_forum_thread(session, ticket.id, None)
                     logger.error(
-                        "Подтема для тикета %s не создана: %s. "
-                        "Для форум-группы нужны права бота «Управление темами». Сообщение в General не шлём.",
+                        "support: create_forum_topic FAILED тикет=%s chat=%s: %s",
                         ticket.id,
-                        e,
+                        mod_chat,
+                        detail,
                     )
             except Exception:
                 await update_ticket_forum_thread(session, ticket.id, None)
                 forum_topic_expected = True
-                logger.exception("create_forum_topic / отправка тикета %s", ticket.id)
+                logger.exception("support: create_forum_topic / отправка тикет=%s chat=%s", ticket.id, mod_chat)
 
     if not posted_to_mod_chat:
+        logger.warning(
+            "support: тикет %s не попал в MODERATION_CHAT (forum_topic_expected=%s) — дублируем в ЛС админам",
+            ticket.id,
+            forum_topic_expected,
+        )
         prefix = ""
         if forum_topic_expected:
             prefix = (
