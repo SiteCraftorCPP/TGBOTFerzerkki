@@ -25,6 +25,7 @@ from app.db.repositories import (
     create_support_ticket,
     create_withdrawal_request,
     get_or_create_user,
+    invalidate_user_support_forum_if_mod_chat_mismatch,
     set_user_support_forum_thread,
     update_ticket_forum_thread,
 )
@@ -197,6 +198,9 @@ async def support_message(message: Message, state: FSMContext, session: AsyncSes
     forum_topic_expected = False
 
     if mod_chat is not None:
+        await session.refresh(user)
+        await invalidate_user_support_forum_if_mod_chat_mismatch(session, user, mod_chat)
+        await session.refresh(user)
         reused_tid = user.support_forum_thread_id
         if reused_tid is not None:
             try:
@@ -221,7 +225,7 @@ async def support_message(message: Message, state: FSMContext, session: AsyncSes
                 topic = await bot.create_forum_topic(chat_id=mod_chat, name=topic_title)
                 thread_id = topic.message_thread_id
                 await update_ticket_forum_thread(session, ticket.id, thread_id)
-                await set_user_support_forum_thread(session, user.id, thread_id)
+                await set_user_support_forum_thread(session, user.id, thread_id, moderation_chat_id=mod_chat)
                 await bot.send_message(
                     mod_chat,
                     ticket_html,

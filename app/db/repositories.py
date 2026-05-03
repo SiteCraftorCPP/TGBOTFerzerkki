@@ -159,11 +159,30 @@ async def get_open_ticket_by_forum_thread(session: AsyncSession, thread_id: int)
     return result.scalars().first()
 
 
-async def set_user_support_forum_thread(session: AsyncSession, user_id: int, thread_id: int | None) -> None:
+async def invalidate_user_support_forum_if_mod_chat_mismatch(
+    session: AsyncSession, user: User, current_mod_chat_id: int
+) -> None:
+    """Если сохранённая ветка была для другого чата модерации — сбросить, чтобы создать тему заново."""
+    stored = user.support_moderation_chat_id
+    if stored is not None and stored != current_mod_chat_id:
+        user.support_forum_thread_id = None
+        user.support_moderation_chat_id = None
+        await session.commit()
+
+
+async def set_user_support_forum_thread(
+    session: AsyncSession, user_id: int, thread_id: int | None, *, moderation_chat_id: int | None = None
+) -> None:
     user = await session.get(User, user_id)
     if user is None:
         return
     user.support_forum_thread_id = thread_id
+    if thread_id is None:
+        user.support_moderation_chat_id = None
+    else:
+        if moderation_chat_id is None:
+            raise ValueError("moderation_chat_id required when thread_id is set")
+        user.support_moderation_chat_id = moderation_chat_id
     await session.commit()
 
 

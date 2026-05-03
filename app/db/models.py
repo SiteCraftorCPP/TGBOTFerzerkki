@@ -20,6 +20,8 @@ class User(Base):
     balance_rub: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     support_forum_thread_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    # В каком MODERATION_CHAT_ID создана support_forum_thread_id (смена чата → сброс ветки).
+    support_moderation_chat_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
 
     profiles: Mapped[list[GameProfile]] = relationship(back_populates="user", cascade="all, delete-orphan")
     subscription: Mapped[Subscription | None] = relationship(back_populates="user", cascade="all, delete-orphan")

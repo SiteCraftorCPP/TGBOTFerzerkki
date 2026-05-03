@@ -41,6 +41,8 @@ def _ensure_user_support_thread_column(connection) -> None:
     columns = {row[1] for row in info}
     if "support_forum_thread_id" not in columns:
         connection.execute(text("ALTER TABLE users ADD COLUMN support_forum_thread_id INTEGER"))
+    if "support_moderation_chat_id" not in columns:
+        connection.execute(text("ALTER TABLE users ADD COLUMN support_moderation_chat_id INTEGER"))
 
 
 async def init_db() -> None:

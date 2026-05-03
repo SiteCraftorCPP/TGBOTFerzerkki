@@ -1,4 +1,3 @@
-from functools import lru_cache
 from urllib.parse import quote
 
 from pydantic import Field
@@ -57,7 +56,7 @@ class Settings(BaseSettings):
         return raw
 
 
-@lru_cache
 def get_settings() -> Settings:
+    """Читает .env при каждом вызове (без кэша): актуальный MODERATION_CHAT_ID и др. из файла."""
     return Settings()
 
