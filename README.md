@@ -24,7 +24,32 @@ python -m app.main
 
 ## VPS (git + systemd)
 
-На сервере (Debian/Ubuntu), от своего пользователя или отдельного `tgbot`:
+Чтобы не трогать другие проекты на сервере, положи бота в **отдельный каталог** (пример ниже — `~/bots/tgbot-ferzerkki`; можно `/srv/tgbot-ferzerkki` и т.п.). В `tgbot-ferzerkki.service` тогда замени `WorkingDirectory` и `ExecStart` на эти пути.
+
+На сервере (Debian/Ubuntu):
+
+```bash
+mkdir -p ~/bots/tgbot-ferzerkki
+cd ~/bots/tgbot-ferzerkki
+git clone https://github.com/SiteCraftorCPP/TGBOTFerzerkki.git .
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+cp .env.example .env
+nano .env   # TOKEN, ADMIN_IDS, при необходимости MODERATION_CHAT_ID
+```
+
+Обновление уже установленного бота:
+
+```bash
+cd ~/bots/tgbot-ferzerkki
+git pull
+source .venv/bin/activate
+pip install -e .
+sudo systemctl restart tgbot-ferzerkki   # если сервис уже настроен
+```
+
+Альтернатива с `/opt` (как в юните по умолчанию):
 
 ```bash
 sudo mkdir -p /opt/TGBOTFerzerkki

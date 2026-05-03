@@ -429,9 +429,15 @@ async def expire_match_later(bot: Bot, match_id: int) -> None:
 async def result_timeout_later(bot: Bot, match_id: int) -> None:
     await asyncio.sleep(600)
     async with SessionLocal() as session:
+        match = await get_match(session, match_id)
+        if match is None:
+            return
+        if match.status not in (MatchStatus.ACTIVE, MatchStatus.RESULT_PENDING):
+            return
         match = await auto_resolve_timeout(session, match_id)
-        if match:
-            await notify_match_status(bot, match.id)
+        if match is None:
+            return
+    await notify_match_status(bot, match.id)
 
 
 async def notify_match_started(bot: Bot, match_id: int) -> None:
@@ -488,9 +494,20 @@ async def notify_match_status(bot: Bot, match_id: int, *, only_terminal: bool = 
                     f"⚖️ Матч в <b>споре</b>.\n📝 Причина: {match.dispute_reason}\nОжидай решения по спору.",
                 )
             await notify_moderation_dispute(bot, match.id)
-        elif only_terminal:
-            return
-        else:
+        elif match.status == MatchStatus.CANCELLED:
+            if only_terminal:
+                return
+            for participant in match.participants:
+                try:
+                    await bot.send_message(
+                        participant.user.telegram_id,
+                        "♻️ Матч отменён: ставка возвращена на баланс в боте (таймаут или автозавершение).",
+                    )
+                except Exception:
+                    logger.exception("Не удалось уведомить об отмене пользователя %s", participant.user_id)
+        elif match.status in (MatchStatus.ACTIVE, MatchStatus.RESULT_PENDING):
+            if only_terminal:
+                return
             for participant in match.participants:
                 await bot.send_message(
                     participant.user.telegram_id,
