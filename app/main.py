@@ -15,7 +15,13 @@ from app.db.session import init_db
 
 async def main() -> None:
     logging.basicConfig(level=logging.INFO)
+    log = logging.getLogger(__name__)
     settings = get_settings()
+    mod = settings.moderation_chat_id_int
+    log.info(
+        "Старт бота: MODERATION_CHAT_ID=%s (в .env строка moderation_chat_id / MODERATION_CHAT_ID)",
+        mod if mod is not None else "не задан — тикеты только в ЛС админам",
+    )
     session = AiohttpSession(proxy=settings.telegram_proxy_url) if settings.telegram_proxy_url else None
     bot = Bot(
         token=settings.telegram_bot_token,

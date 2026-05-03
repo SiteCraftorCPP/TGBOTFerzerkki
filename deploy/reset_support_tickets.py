@@ -48,9 +48,20 @@ def main() -> None:
     try:
         cur = con.execute("DELETE FROM support_tickets")
         deleted = cur.rowcount
-        con.execute("DELETE FROM sqlite_sequence WHERE name='support_tickets'")
         con.commit()
-        print(f"Удалено строк тикетов: {deleted}. sqlite_sequence для support_tickets сброшен (если был).")
+        print(f"Удалено строк тикетов: {deleted}.")
+        try:
+            con.execute("DELETE FROM sqlite_sequence WHERE name='support_tickets'")
+            con.commit()
+            print("Счётчик sqlite_sequence для support_tickets сброшен.")
+        except sqlite3.OperationalError as e:
+            if "no such table" in str(e).lower():
+                print(
+                    "Таблицы sqlite_sequence нет (обычно до первого AUTOINCREMENT) — это норма, "
+                    "DELETE уже закоммичен."
+                )
+            else:
+                raise
     finally:
         con.close()
     print("Готово.")
