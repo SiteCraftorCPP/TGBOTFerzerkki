@@ -264,7 +264,28 @@ async def tmod_collapse(callback: CallbackQuery) -> None:
 
 @router.message(StateFilter(TopicModStates.waiting_close_reply), InModChatTopic(), F.text)
 async def topic_close_reply_body(message: Message, session: AsyncSession, state: FSMContext, bot: Bot) -> None:
-    if not _is_admin(message.from_user.id if message.from_user else None):
+    if message.from_user is None:
+        logger.warning("topic_close_reply: from_user is None (анонимный админ / от имени канала)")
+        await _answer_in_thread(
+            message,
+            bot,
+            "⚠️ Не вижу твой user_id. Отключи режим анонимного администратора для этой группы "
+            "или закрывай тикет с аккаунта, чей числовой id внесён в ADMIN_IDS.",
+        )
+        return
+    if not _is_admin(message.from_user.id):
+        logger.warning(
+            "topic_close_reply: user_id=%s нет в ADMIN_IDS — добавь в .env на сервере",
+            message.from_user.id,
+        )
+        await _answer_in_thread(
+            message,
+            bot,
+            f"⚠️ Твой Telegram id <code>{message.from_user.id}</code> не в ADMIN_IDS. "
+            f"Попроси вписать в <code>.env</code> через запятую и выполнить "
+            f"<code>systemctl restart tgbot-ferzerkki</code>.",
+            parse_mode="HTML",
+        )
         return
     data = await state.get_data()
     if message.message_thread_id != data.get("mod_thread_id"):

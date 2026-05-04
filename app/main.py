@@ -22,6 +22,12 @@ async def main() -> None:
         "Старт бота: MODERATION_CHAT_ID=%s (в .env строка moderation_chat_id / MODERATION_CHAT_ID)",
         mod if mod is not None else "не задан — тикеты только в ЛС админам",
     )
+    admins = settings.admin_ids_list
+    log.info(
+        "ADMIN_IDS: всего %s — id=%s (если второй админ «молчит», проверь что его id в этом списке)",
+        len(admins),
+        admins,
+    )
     session = AiohttpSession(proxy=settings.telegram_proxy_url) if settings.telegram_proxy_url else None
     bot = Bot(
         token=settings.telegram_bot_token,

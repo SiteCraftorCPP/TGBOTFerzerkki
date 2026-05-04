@@ -1,6 +1,11 @@
 from app.core.config import Settings
 
 
+def test_admin_ids_list_accepts_semicolon_and_hash_comment() -> None:
+    settings = Settings(telegram_bot_token="t", admin_ids="111; 222, 333 # запасной")
+    assert settings.admin_ids_list == [111, 222, 333]
+
+
 def test_admin_ids_list_accepts_comma_separated() -> None:
     settings = Settings(telegram_bot_token="t", admin_ids="111, 222 , 333")
     assert settings.admin_ids_list == [111, 222, 333]

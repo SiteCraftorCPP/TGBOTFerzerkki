@@ -34,8 +34,8 @@ async def relay_forum_reply_to_user(message: Message, bot: Bot, state: FSMContex
     if message.from_user is None or message.from_user.is_bot:
         return
     if message.from_user.id not in get_settings().admin_ids_list:
-        logger.debug(
-            "relay: пропуск — пользователь %s не в admin_ids",
+        logger.info(
+            "relay: не админ user_id=%s — нет в ADMIN_IDS, в ЛС пользователю не отправлено",
             message.from_user.id,
         )
         return

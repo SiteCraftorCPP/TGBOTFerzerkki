@@ -25,7 +25,18 @@ class Settings(BaseSettings):
 
     @property
     def admin_ids_list(self) -> list[int]:
-        return [int(raw.strip()) for raw in self.admin_ids.split(",") if raw.strip()]
+        """Числовые Telegram user id. Запятая / точка с запятой, пробелы, комментарий # после id."""
+        result: list[int] = []
+        raw = (self.admin_ids or "").replace(";", ",")
+        for part in raw.split(","):
+            s = part.strip()
+            if not s or s.startswith("#"):
+                continue
+            s = s.split("#", 1)[0].strip()
+            if not s:
+                continue
+            result.append(int(s))
+        return result
 
     @property
     def moderation_chat_id_int(self) -> int | None:
