@@ -30,14 +30,11 @@ from app.db.repositories import (
     resolve_user_identifier,
 )
 from app.services.matches import MatchError, cancel_match, get_match, list_disputes
+from app.bot.staff import acts_as_moderator_callback, acts_as_moderator_message
 
 logger = logging.getLogger(__name__)
 
 router = Router()
-
-
-def _is_admin(user_id: int | None) -> bool:
-    return user_id is not None and user_id in get_settings().admin_ids_list
 
 
 def _mod_chat_id() -> int | None:
@@ -94,7 +91,7 @@ async def _callback_answer_in_thread(
 
 @router.callback_query(F.data == "tmod:cancel_fsm")
 async def tmod_cancel_fsm(callback: CallbackQuery, state: FSMContext, bot: Bot) -> None:
-    if not _is_admin(callback.from_user.id if callback.from_user else None):
+    if not acts_as_moderator_callback(callback, _mod_chat_id()):
         await callback.answer("Нет доступа.", show_alert=True)
         return
     mc = _mod_chat_id()
@@ -119,7 +116,7 @@ async def tmod_cancel_fsm(callback: CallbackQuery, state: FSMContext, bot: Bot) 
     (F.data.startswith("tmod:close:") | F.data.startswith("tmod:pick:"))
 )
 async def tmod_close_start(callback: CallbackQuery, state: FSMContext, bot: Bot) -> None:
-    if not _is_admin(callback.from_user.id if callback.from_user else None):
+    if not acts_as_moderator_callback(callback, _mod_chat_id()):
         await callback.answer("Нет доступа.", show_alert=True)
         return
     mc = _mod_chat_id()
@@ -150,7 +147,7 @@ async def tmod_close_start(callback: CallbackQuery, state: FSMContext, bot: Bot)
 
 @router.callback_query(F.data == "tmod:disputes")
 async def tmod_disputes(callback: CallbackQuery, session: AsyncSession, bot: Bot) -> None:
-    if not _is_admin(callback.from_user.id if callback.from_user else None):
+    if not acts_as_moderator_callback(callback, _mod_chat_id()):
         await callback.answer("Нет доступа.", show_alert=True)
         return
     mc = _mod_chat_id()
@@ -181,7 +178,7 @@ async def tmod_disputes(callback: CallbackQuery, session: AsyncSession, bot: Bot
 
 @router.callback_query(F.data == "tmod:cancel")
 async def tmod_cancel_start(callback: CallbackQuery, state: FSMContext, bot: Bot) -> None:
-    if not _is_admin(callback.from_user.id if callback.from_user else None):
+    if not acts_as_moderator_callback(callback, _mod_chat_id()):
         await callback.answer("Нет доступа.", show_alert=True)
         return
     mc = _mod_chat_id()
@@ -204,7 +201,7 @@ async def tmod_cancel_start(callback: CallbackQuery, state: FSMContext, bot: Bot
 
 @router.callback_query(F.data.in_(("tmod:+bal", "tmod:-bal")))
 async def tmod_balance_start(callback: CallbackQuery, state: FSMContext, bot: Bot) -> None:
-    if not _is_admin(callback.from_user.id if callback.from_user else None):
+    if not acts_as_moderator_callback(callback, _mod_chat_id()):
         await callback.answer("Нет доступа.", show_alert=True)
         return
     mc = _mod_chat_id()
@@ -231,7 +228,7 @@ async def tmod_balance_start(callback: CallbackQuery, state: FSMContext, bot: Bo
 
 @router.callback_query(F.data == "tmod:tickets")
 async def tmod_tickets(callback: CallbackQuery, session: AsyncSession, bot: Bot) -> None:
-    if not _is_admin(callback.from_user.id if callback.from_user else None):
+    if not acts_as_moderator_callback(callback, _mod_chat_id()):
         await callback.answer("Нет доступа.", show_alert=True)
         return
     mc = _mod_chat_id()
@@ -255,7 +252,7 @@ async def tmod_tickets(callback: CallbackQuery, session: AsyncSession, bot: Bot)
 
 @router.callback_query(F.data == "tmod:collapse")
 async def tmod_collapse(callback: CallbackQuery) -> None:
-    if not _is_admin(callback.from_user.id if callback.from_user else None):
+    if not acts_as_moderator_callback(callback, _mod_chat_id()):
         await callback.answer("Нет доступа.", show_alert=True)
         return
     await callback.message.edit_text("✓")
@@ -264,27 +261,13 @@ async def tmod_collapse(callback: CallbackQuery) -> None:
 
 @router.message(StateFilter(TopicModStates.waiting_close_reply), InModChatTopic(), F.text)
 async def topic_close_reply_body(message: Message, session: AsyncSession, state: FSMContext, bot: Bot) -> None:
-    if message.from_user is None:
-        logger.warning("topic_close_reply: from_user is None (анонимный админ / от имени канала)")
+    if not acts_as_moderator_message(message, _mod_chat_id()):
+        uid = message.from_user.id if message.from_user else None
+        logger.warning("topic_close_reply: отклонено user_id=%s (не админ в этом чате)", uid)
         await _answer_in_thread(
             message,
             bot,
-            "⚠️ Не вижу твой user_id. Отключи режим анонимного администратора для этой группы "
-            "или закрывай тикет с аккаунта, чей числовой id внесён в ADMIN_IDS.",
-        )
-        return
-    if not _is_admin(message.from_user.id):
-        logger.warning(
-            "topic_close_reply: user_id=%s нет в ADMIN_IDS — добавь в .env на сервере",
-            message.from_user.id,
-        )
-        await _answer_in_thread(
-            message,
-            bot,
-            f"⚠️ Твой Telegram id <code>{message.from_user.id}</code> не в ADMIN_IDS. "
-            f"Попроси вписать в <code>.env</code> через запятую и выполнить "
-            f"<code>systemctl restart tgbot-ferzerkki</code>.",
-            parse_mode="HTML",
+            "⚠️ Нет прав на закрытие тикета из этой группы (аккаунт не в ADMIN_IDS или не чат модерации).",
         )
         return
     data = await state.get_data()
@@ -336,7 +319,7 @@ async def topic_close_reply_body(message: Message, session: AsyncSession, state:
 
 @router.message(StateFilter(TopicModStates.waiting_cancel_match), InModChatTopic(), F.text)
 async def topic_cancel_match(message: Message, session: AsyncSession, state: FSMContext, bot: Bot) -> None:
-    if not _is_admin(message.from_user.id if message.from_user else None):
+    if not acts_as_moderator_message(message, _mod_chat_id()):
         return
     data = await state.get_data()
     if message.message_thread_id != data.get("mod_thread_id"):
@@ -368,7 +351,7 @@ async def topic_cancel_match(message: Message, session: AsyncSession, state: FSM
 
 @router.message(StateFilter(TopicModStates.balance_add_line), InModChatTopic(), F.text)
 async def topic_balance_add(message: Message, session: AsyncSession, state: FSMContext, bot: Bot) -> None:
-    if not _is_admin(message.from_user.id if message.from_user else None):
+    if not acts_as_moderator_message(message, _mod_chat_id()):
         return
     data = await state.get_data()
     if message.message_thread_id != data.get("mod_thread_id"):
@@ -408,7 +391,7 @@ async def topic_balance_add(message: Message, session: AsyncSession, state: FSMC
 
 @router.message(StateFilter(TopicModStates.balance_sub_line), InModChatTopic(), F.text)
 async def topic_balance_sub(message: Message, session: AsyncSession, state: FSMContext, bot: Bot) -> None:
-    if not _is_admin(message.from_user.id if message.from_user else None):
+    if not acts_as_moderator_message(message, _mod_chat_id()):
         return
     data = await state.get_data()
     if message.message_thread_id != data.get("mod_thread_id"):

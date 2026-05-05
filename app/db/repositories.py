@@ -65,6 +65,14 @@ async def get_user_by_tg_id(session: AsyncSession, telegram_id: int) -> User | N
     return result.scalar_one_or_none()
 
 
+def user_needs_oferta_acceptance(user: User | None, *, current_version: str) -> bool:
+    want = (current_version or "").strip()
+    if user is None:
+        return True
+    got = (user.oferta_accepted_version or "").strip()
+    return got != want
+
+
 async def get_user_by_id(session: AsyncSession, user_id: int) -> User | None:
     result = await session.execute(select(User).where(User.id == user_id).options(selectinload(User.subscription)))
     return result.scalar_one_or_none()

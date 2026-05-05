@@ -7,6 +7,7 @@ from aiogram.filters import BaseFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
+from app.bot.staff import acts_as_moderator_message
 from app.bot.states import TopicModStates
 from app.core.config import get_settings
 from app.db.repositories import get_open_ticket_by_forum_thread
@@ -45,9 +46,10 @@ class OutsideTopicModFsm(BaseFilter):
 async def relay_forum_reply_to_user(message: Message, bot: Bot, state: FSMContext) -> None:
     if message.from_user is None or message.from_user.is_bot:
         return
-    if message.from_user.id not in get_settings().admin_ids_list:
+    mod_chat = get_settings().moderation_chat_id_int
+    if not acts_as_moderator_message(message, mod_chat):
         logger.info(
-            "relay: не админ user_id=%s — нет в ADMIN_IDS, в ЛС пользователю не отправлено",
+            "relay: не модератор user_id=%s — в ЛС пользователю не отправлено",
             message.from_user.id,
         )
         return

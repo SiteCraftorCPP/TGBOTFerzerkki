@@ -43,6 +43,8 @@ def _ensure_user_support_thread_column(connection) -> None:
         connection.execute(text("ALTER TABLE users ADD COLUMN support_forum_thread_id INTEGER"))
     if "support_moderation_chat_id" not in columns:
         connection.execute(text("ALTER TABLE users ADD COLUMN support_moderation_chat_id INTEGER"))
+    if "oferta_accepted_version" not in columns:
+        connection.execute(text("ALTER TABLE users ADD COLUMN oferta_accepted_version VARCHAR(32)"))
 
 
 async def init_db() -> None:
@@ -51,6 +53,7 @@ async def init_db() -> None:
         await conn.run_sync(_ensure_support_ticket_forum_column)
         await conn.run_sync(_ensure_user_support_thread_column)
         await conn.run_sync(_ensure_withdrawal_payout_details_column)
+
 
     if settings.reset_support_tickets_on_startup and engine.dialect.name == "sqlite":
         async with engine.begin() as conn:

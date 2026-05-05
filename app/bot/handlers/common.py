@@ -5,19 +5,25 @@ from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.handlers.games import match_flow_back_handler
+from app.bot.handlers.oferta import send_oferta_to_chat
 from app.bot.keyboards.common import balance_actions_keyboard, flow_nav_keyboard, main_menu
 from app.bot.states import BalanceStates, ProfileStates, SupportStates
 from app.bot.texts import WELCOME_HTML
 from app.bot.texts_balance import balance_intro_html
+from app.core.config import get_settings
 from app.core.constants import GAME_TITLES, Game
-from app.db.repositories import get_or_create_user
+from app.db.repositories import get_or_create_user, user_needs_oferta_acceptance
 
 router = Router()
 
 
 @router.message(CommandStart())
 async def start(message: Message, session: AsyncSession) -> None:
-    await get_or_create_user(session, message.from_user)
+    user = await get_or_create_user(session, message.from_user)
+    settings = get_settings()
+    if user_needs_oferta_acceptance(user, current_version=settings.oferta_version):
+        await send_oferta_to_chat(message.bot, message.chat.id)
+        return
     await message.answer(WELCOME_HTML, reply_markup=main_menu(), parse_mode="HTML")
 
 

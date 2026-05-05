@@ -20,6 +20,8 @@ class Settings(BaseSettings):
         default=False,
         description="Только SQLite: при true удаляет все обращения и сбрасывает нумерацию при старте бота.",
     )
+    # Смени значение, чтобы все пользователи снова увидели оферту.
+    oferta_version: str = "1"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

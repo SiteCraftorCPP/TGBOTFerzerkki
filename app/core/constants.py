@@ -47,3 +47,6 @@ MODE_TITLES = {
     MatchMode.TWO_VS_TWO: "2 на 2",
 }
 
+# Сообщения админа с включённой «анонимностью» в группе приходят от этого user_id (Bot API).
+TELEGRAM_ANONYMOUS_GROUP_ADMIN_USER_ID = 1087968824
+

@@ -22,6 +22,8 @@ class User(Base):
     support_forum_thread_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     # В каком MODERATION_CHAT_ID создана support_forum_thread_id (смена чата → сброс ветки).
     support_moderation_chat_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
+    # Версия принятой оферты (см. OFERTA_VERSION в .env); NULL — не принимал или старая редакция.
+    oferta_accepted_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     profiles: Mapped[list[GameProfile]] = relationship(back_populates="user", cascade="all, delete-orphan")
     subscription: Mapped[Subscription | None] = relationship(back_populates="user", cascade="all, delete-orphan")
