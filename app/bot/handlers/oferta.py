@@ -34,8 +34,7 @@ async def send_oferta_to_chat(bot: Bot, chat_id: int) -> None:
         chat_id,
         document=FSInputFile(path),
         caption=(
-            "📜 <b>Публичная оферта</b> во вложении. Чтобы пользоваться ботом, открой документ, "
-            "ознакомься с условиями и нажми «Принять оферту»."
+            "📜  Чтобы пользоваться ботом, открой документ, ознакомься с условиями и нажми «Принять оферту»."
         ),
         reply_markup=oferta_accept_keyboard(),
         parse_mode="HTML",
