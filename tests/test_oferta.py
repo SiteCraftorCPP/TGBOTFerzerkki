@@ -18,9 +18,9 @@ def test_user_ok_when_version_matches() -> None:
     assert user_needs_oferta_acceptance(u, current_version="1") is False
 
 
-def test_oferta_chunks_nonempty() -> None:
-    from app.bot.oferta_text import iter_oferta_chunks
+def test_oferta_docx_bundled() -> None:
+    from app.bot.oferta_text import oferta_docx_path
 
-    chunks = iter_oferta_chunks()
-    assert len(chunks) >= 1
-    assert all(len(c) <= 4096 for c in chunks)
+    p = oferta_docx_path()
+    assert p.is_file()
+    assert p.suffix.lower() == ".docx"
