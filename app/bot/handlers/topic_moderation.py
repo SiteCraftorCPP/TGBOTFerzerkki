@@ -289,6 +289,13 @@ async def topic_close_reply_body(message: Message, session: AsyncSession, state:
         return
     data = await state.get_data()
     if message.message_thread_id != data.get("mod_thread_id"):
+        logger.warning(
+            "topic_close_reply: неверная подтема admin=%s got_thread=%s нужна=%s ticket_id=%s",
+            message.from_user.id,
+            message.message_thread_id,
+            data.get("mod_thread_id"),
+            data.get("ticket_id"),
+        )
         await _wrong_thread_hint(bot, data)
         return
     ticket_id = int(data["ticket_id"])
